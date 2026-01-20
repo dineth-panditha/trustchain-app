@@ -1,11 +1,11 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState } from "react";
 import { BrowserProvider, Contract } from "ethers";
 import ProductAuthABI from "../utils/ProductAuth.json";
 import toast from "react-hot-toast";
 
-const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || "";
+const CONTRACT_ADDRESS = "0x725D5f2EF3A09E0Aac061460478Bd0aC7937648A";
 
 interface Web3ContextType {
   account: string | null;
@@ -58,9 +58,6 @@ export const Web3Provider = ({ children }: { children: React.ReactNode }) => {
       const accounts = await provider.send("eth_requestAccounts", []);
       setAccount(accounts[0]);
 
-      console.log("Wallet Connected:", accounts[0]);
-      console.log("Contract Address:", CONTRACT_ADDRESS);
-
       const newContract = new Contract(CONTRACT_ADDRESS, ProductAuthABI.abi, signer);
       setContract(newContract);
       
@@ -73,25 +70,17 @@ export const Web3Provider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const registerProduct = async (serial: string, name: string, manufacturer: string, imageHash: string): Promise<boolean> => {
-    console.log("Register Function Triggered"); 
-    
     if (!contract) { 
-      console.error("Contract is NULL. Wallet not connected properly.");
       toast.error("Connect Wallet First"); 
       return false; 
     }
-
     const toastId = "reg-toast";
     setIsLoading(true);
     toast.loading("Processing...", { id: toastId });
     try {
-      console.log("Sending Transaction to Blockchain...");
       const tx = await contract.registerProduct(serial, name, manufacturer, imageHash);
-      console.log("Transaction Hash:", tx.hash);
-      
       await tx.wait();
-      console.log("Transaction Confirmed");
-
+      
       await fetchStats(contract);
       toast.success("Registration Successful", { id: toastId });
       return true;
@@ -164,6 +153,16 @@ export const Web3Provider = ({ children }: { children: React.ReactNode }) => {
     if (!contract) return null;
     try {
       const product = await contract.verifyProduct.staticCall(serial);
+      
+      try {
+        const tx = await contract.verifyProduct(serial);
+        tx.wait().then(() => {
+            fetchStats(contract);
+        });
+      } catch (txError) {
+        console.warn("Scan count update skipped");
+      }
+
       return product;
     } catch (error) { 
       console.error(error);
