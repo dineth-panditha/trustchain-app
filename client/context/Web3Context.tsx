@@ -5,6 +5,12 @@ import { BrowserProvider, Contract } from "ethers";
 import ProductAuthABI from "../utils/ProductAuth.json";
 import toast from "react-hot-toast";
 
+declare global {
+  interface Window {
+    ethereum: any;
+  }
+}
+
 const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || "";
 
 interface Web3ContextType {
@@ -15,7 +21,7 @@ interface Web3ContextType {
   claimProduct: (serial: string) => Promise<boolean>;
   reportFake: (serial: string) => Promise<boolean>;
   getUserProducts: () => Promise<string[]>;
-  getProductDetails: (serial: string) => Promise<any>; 
+  getProductDetails: (serial: string) => Promise<any>;
   isLoading: boolean;
   totalProducts: number;
   totalScans: number;
@@ -41,12 +47,14 @@ export const Web3Provider = ({ children }: { children: React.ReactNode }) => {
       setTotalProducts(Number(pCount));
       setTotalScans(Number(sCount));
       setTotalReports(Number(rCount));
-    } catch (err) { console.error(err); }
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   const connectWallet = async () => {
     try {
-      if (!window.ethereum) return toast.error("Please install MetaMask!");
+      if (!window.ethereum) return toast.error("Please install MetaMask");
       const provider = new BrowserProvider(window.ethereum);
       const signer = await provider.getSigner();
       const accounts = await provider.send("eth_requestAccounts", []);
@@ -56,12 +64,17 @@ export const Web3Provider = ({ children }: { children: React.ReactNode }) => {
       setContract(newContract);
       
       await fetchStats(newContract); 
-      toast.success("Wallet Connected!");
-    } catch (error) { toast.error("Connection Failed!"); }
+      toast.success("Wallet Connected");
+    } catch (error) {
+      toast.error("Connection Failed");
+    }
   };
 
   const registerProduct = async (serial: string, name: string, manufacturer: string, imageHash: string): Promise<boolean> => {
-    if (!contract) { toast.error("Connect Wallet First!"); return false; }
+    if (!contract) { 
+      toast.error("Connect Wallet First"); 
+      return false; 
+    }
     const toastId = "reg-toast";
     setIsLoading(true);
     toast.loading("Processing...", { id: toastId });
@@ -69,32 +82,42 @@ export const Web3Provider = ({ children }: { children: React.ReactNode }) => {
       const tx = await contract.registerProduct(serial, name, manufacturer, imageHash);
       await tx.wait();
       await fetchStats(contract);
-      toast.success("Success!", { id: toastId });
+      toast.success("Registration Successful", { id: toastId });
       return true;
     } catch (error: any) {
-      toast.error("Failed!", { id: toastId });
+      toast.error("Registration Failed", { id: toastId });
       return false;
-    } finally { setIsLoading(false); }
+    } finally { 
+      setIsLoading(false); 
+    }
   };
 
   const claimProduct = async (serial: string): Promise<boolean> => {
-    if (!contract) { toast.error("Connect Wallet First!"); return false; }
+    if (!contract) { 
+      toast.error("Connect Wallet First"); 
+      return false; 
+    }
     const toastId = "claim-toast";
     setIsLoading(true);
-    toast.loading("Transferring...", { id: toastId });
+    toast.loading("Transferring Ownership...", { id: toastId });
     try {
       const tx = await contract.claimOwnership(serial);
       await tx.wait();
-      toast.success("Claimed!", { id: toastId });
+      toast.success("Ownership Claimed", { id: toastId });
       return true;
     } catch (error: any) {
-      toast.error("Failed!", { id: toastId });
+      toast.error("Claim Failed", { id: toastId });
       return false;
-    } finally { setIsLoading(false); }
+    } finally { 
+      setIsLoading(false); 
+    }
   };
 
   const reportFake = async (serial: string): Promise<boolean> => {
-    if (!contract) { toast.error("Connect Wallet First!"); return false; }
+    if (!contract) { 
+      toast.error("Connect Wallet First"); 
+      return false; 
+    }
     const toastId = "report-toast";
     setIsLoading(true);
     toast.loading("Reporting...", { id: toastId });
@@ -102,12 +125,14 @@ export const Web3Provider = ({ children }: { children: React.ReactNode }) => {
       const tx = await contract.reportFake(serial, "Mobile Scan");
       await tx.wait();
       await fetchStats(contract); 
-      toast.success("Report Sent!", { id: toastId });
+      toast.success("Report Sent", { id: toastId });
       return true;
     } catch (error: any) {
-      toast.error("Failed!", { id: toastId });
+      toast.error("Failed to Report", { id: toastId });
       return false;
-    } finally { setIsLoading(false); }
+    } finally { 
+      setIsLoading(false); 
+    }
   };
 
   const getUserProducts = async (): Promise<string[]> => {
@@ -116,30 +141,28 @@ export const Web3Provider = ({ children }: { children: React.ReactNode }) => {
       const products = await contract.getUserProducts(account);
       return Array.from(products);
     } catch (error) {
-      console.error("Error fetching user products:", error);
+      console.error(error);
       return [];
     }
   };
 
-  
   const verifyProduct = async (serial: string) => {
     if (!contract) return null;
     try {
-      const tx = await contract.verifyProduct(serial); 
-      const product = await contract.verifyProduct.staticCall(serial);
-      return product;
-    } catch (error) { return null; }
-  };
-
-  
-  const getProductDetails = async (serial: string) => {
-    if (!contract) return null;
-    try {
-   
+      const tx = await contract.verifyProduct(serial);
       const product = await contract.verifyProduct.staticCall(serial);
       return product;
     } catch (error) { 
-      console.error("Read Error:", error);
+      return null; 
+    }
+  };
+
+  const getProductDetails = async (serial: string) => {
+    if (!contract) return null;
+    try {
+      const product = await contract.verifyProduct.staticCall(serial);
+      return product;
+    } catch (error) { 
       return null; 
     }
   };
