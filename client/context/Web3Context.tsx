@@ -64,6 +64,7 @@ export const Web3Provider = ({ children }: { children: React.ReactNode }) => {
       await fetchStats(newContract); 
       toast.success("Wallet Connected");
     } catch (error) {
+      console.error(error);
       toast.error("Connection Failed");
     }
   };
@@ -77,12 +78,18 @@ export const Web3Provider = ({ children }: { children: React.ReactNode }) => {
     setIsLoading(true);
     toast.loading("Processing...", { id: toastId });
     try {
+      console.log("Sending Transaction...");
       const tx = await contract.registerProduct(serial, name, manufacturer, imageHash);
+      console.log("Transaction sent:", tx.hash);
+      
       await tx.wait();
+      console.log("Transaction mined");
+
       await fetchStats(contract);
       toast.success("Registration Successful", { id: toastId });
       return true;
     } catch (error: any) {
+      console.error("Registration Error Details:", error);
       toast.error("Registration Failed", { id: toastId });
       return false;
     } finally { 
@@ -104,6 +111,7 @@ export const Web3Provider = ({ children }: { children: React.ReactNode }) => {
       toast.success("Ownership Claimed", { id: toastId });
       return true;
     } catch (error: any) {
+      console.error(error);
       toast.error("Claim Failed", { id: toastId });
       return false;
     } finally { 
@@ -126,6 +134,7 @@ export const Web3Provider = ({ children }: { children: React.ReactNode }) => {
       toast.success("Report Sent", { id: toastId });
       return true;
     } catch (error: any) {
+      console.error(error);
       toast.error("Failed to Report", { id: toastId });
       return false;
     } finally { 
@@ -147,10 +156,10 @@ export const Web3Provider = ({ children }: { children: React.ReactNode }) => {
   const verifyProduct = async (serial: string) => {
     if (!contract) return null;
     try {
-      const tx = await contract.verifyProduct(serial);
       const product = await contract.verifyProduct.staticCall(serial);
       return product;
     } catch (error) { 
+      console.error(error);
       return null; 
     }
   };
