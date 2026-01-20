@@ -5,12 +5,6 @@ import { BrowserProvider, Contract } from "ethers";
 import ProductAuthABI from "../utils/ProductAuth.json";
 import toast from "react-hot-toast";
 
-declare global {
-  interface Window {
-    ethereum: any;
-  }
-}
-
 const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || "";
 
 interface Web3ContextType {
@@ -54,8 +48,12 @@ export const Web3Provider = ({ children }: { children: React.ReactNode }) => {
 
   const connectWallet = async () => {
     try {
-      if (!window.ethereum) return toast.error("Please install MetaMask");
-      const provider = new BrowserProvider(window.ethereum);
+      // FIX: Casting window to any to bypass TypeScript error
+      const { ethereum } = window as any;
+
+      if (!ethereum) return toast.error("Please install MetaMask");
+      
+      const provider = new BrowserProvider(ethereum);
       const signer = await provider.getSigner();
       const accounts = await provider.send("eth_requestAccounts", []);
       setAccount(accounts[0]);
