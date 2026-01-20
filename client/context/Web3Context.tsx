@@ -48,7 +48,7 @@ export const Web3Provider = ({ children }: { children: React.ReactNode }) => {
 
   const connectWallet = async () => {
     try {
-      // FIX: Casting window to any to bypass TypeScript error
+      // FIX: We cast window to 'any' to avoid TypeScript errors
       const { ethereum } = window as any;
 
       if (!ethereum) return toast.error("Please install MetaMask");
