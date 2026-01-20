@@ -48,8 +48,10 @@ export const Web3Provider = ({ children }: { children: React.ReactNode }) => {
 
   const connectWallet = async () => {
     try {
-      // FIX: Direct casting to 'any' inside the logic
-      if (!(window as any).ethereum) return toast.error("Please install MetaMask");
+      if (!(window as any).ethereum) {
+        toast.error("Please install MetaMask");
+        return;
+      }
       
       const provider = new BrowserProvider((window as any).ethereum);
       const signer = await provider.getSigner();
