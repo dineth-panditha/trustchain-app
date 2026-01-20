@@ -10,7 +10,7 @@ import Link from "next/link";
 import toast from "react-hot-toast";
 
 export default function AdminPage() {
-  const { registerProduct, isLoading, account, totalProducts, totalScans, totalReports } = useWeb3();
+  const { registerProduct, isLoading, account, connectWallet, totalProducts, totalScans, totalReports } = useWeb3();
   const router = useRouter();
   
   const [formData, setFormData] = useState({ serial: "", name: "", manufacturer: "" });
@@ -19,14 +19,17 @@ export default function AdminPage() {
   const [showQR, setShowQR] = useState(false);
 
   useEffect(() => {
-    if (!account) {
-      const timer = setTimeout(() => {
-        toast.error("Please connect your wallet first!");
-        router.push("/");
-      }, 1000);
-      return () => clearTimeout(timer);
-    }
-  }, [account, router]);
+    const init = async () => {
+      if (!account) {
+        try {
+            await connectWallet(); 
+        } catch(e) {
+            console.log("Auto connect failed");
+        }
+      }
+    };
+    init();
+  }, [account]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -38,34 +41,44 @@ export default function AdminPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log("Form Submitted");
+
+    if (!account) {
+        toast.error("Please Connect Wallet First");
+        await connectWallet();
+        return;
+    }
+
     if (!file) return toast.error("Please select a product image!");
 
     const loadingId = toast.loading("Uploading image to IPFS...");
-    const imageHash = await uploadToIPFS(file);
-
-    if (imageHash) {
-      toast.success("Image Uploaded!", { id: loadingId });
-      const isSuccess = await registerProduct(formData.serial, formData.name, formData.manufacturer, imageHash);
-      if (isSuccess) {
-        setShowQR(true);
-      }
-    } else {
-      toast.error("IPFS Upload Failed!", { id: loadingId });
+    try {
+        const imageHash = await uploadToIPFS(file);
+        
+        if (imageHash) {
+            toast.success("Image Uploaded!", { id: loadingId });
+            console.log("Calling Register Product...");
+            const isSuccess = await registerProduct(formData.serial, formData.name, formData.manufacturer, imageHash);
+            if (isSuccess) {
+                setShowQR(true);
+            }
+        } else {
+            toast.error("IPFS Upload Failed!", { id: loadingId });
+        }
+    } catch (error) {
+        console.error(error);
+        toast.error("Process Failed", { id: loadingId });
     }
   };
 
   return (
     <>
-      {/* ================= PRINT VIEW (Hidden on Screen, Visible on Print) ================= */}
       <div className="hidden print:flex flex-col items-center justify-center w-screen h-screen bg-white text-black fixed top-0 left-0 z-[9999]">
          <div className="flex flex-col items-center border-4 border-black p-10 rounded-[2rem] max-w-lg w-full">
             <h2 className="text-3xl font-bold mb-8 text-center uppercase tracking-wider">TrustChain Verified</h2>
-            
             <div className="mb-6">
-               {/* Print Size QR Code */}
                {formData.serial && <QRCodeSVG value={formData.serial} size={300} />}
             </div>
-            
             <div className="text-center">
               <p className="text-xs text-gray-500 uppercase font-bold mb-2">Serial Number</p>
               <p className="text-4xl font-mono font-bold tracking-widest text-black">{formData.serial}</p>
@@ -73,18 +86,13 @@ export default function AdminPage() {
          </div>
          <p className="mt-8 text-gray-400 text-sm">Scan to verify product authenticity</p>
       </div>
-      {/* =================================================================================== */}
 
-
-      {/* ================= NORMAL ADMIN UI (Hidden on Print) ================= */}
       <div className="min-h-screen bg-black text-white p-6 print:hidden">
         <div className="max-w-6xl mx-auto">
-          {/* Header Section */}
           <div className="flex flex-col md:flex-row justify-between items-center mb-10 gap-4">
             <Link href="/" className="flex items-center gap-2 text-slate-400 hover:text-white self-start md:self-center"><ArrowLeft size={20}/> Back</Link>
             
             <div className="flex flex-wrap gap-4">
-              {/* Analytics Cards */}
               <div className="glass-panel px-6 py-3 rounded-2xl flex items-center gap-4 border-blue-500/30 bg-blue-500/5">
                 <div className="p-2 bg-blue-500/20 rounded-lg"><Database className="text-blue-500" size={20} /></div>
                 <div><p className="text-[10px] uppercase text-slate-500 font-bold">Total Products</p><p className="text-xl font-bold">{totalProducts}</p></div>
@@ -103,7 +111,6 @@ export default function AdminPage() {
           </div>
 
           <div className="grid lg:grid-cols-2 gap-8">
-            {/* Registration Form */}
             <div className="glass-panel p-8 rounded-3xl border border-white/10">
               <h2 className="text-2xl font-bold mb-6 flex items-center gap-2"><PackagePlus className="text-blue-500"/> New Registration</h2>
               <p className="text-sm text-slate-400 mb-4">Demo Mode: Anyone can register products.</p>
@@ -133,7 +140,6 @@ export default function AdminPage() {
               </form>
             </div>
 
-            {/* QR Display Area */}
             <div className="glass-panel p-8 rounded-3xl flex flex-col items-center justify-center border-dashed border-white/10 min-h-[400px]">
               {showQR ? (
                 <div className="text-center animate-in zoom-in duration-300">

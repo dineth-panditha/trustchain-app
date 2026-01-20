@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState } from "react";
+import React, { createContext, useContext, useState, useEffect } from "react";
 import { BrowserProvider, Contract } from "ethers";
 import ProductAuthABI from "../utils/ProductAuth.json";
 import toast from "react-hot-toast";
@@ -58,6 +58,9 @@ export const Web3Provider = ({ children }: { children: React.ReactNode }) => {
       const accounts = await provider.send("eth_requestAccounts", []);
       setAccount(accounts[0]);
 
+      console.log("Wallet Connected:", accounts[0]);
+      console.log("Contract Address:", CONTRACT_ADDRESS);
+
       const newContract = new Contract(CONTRACT_ADDRESS, ProductAuthABI.abi, signer);
       setContract(newContract);
       
@@ -70,26 +73,30 @@ export const Web3Provider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const registerProduct = async (serial: string, name: string, manufacturer: string, imageHash: string): Promise<boolean> => {
+    console.log("Register Function Triggered"); 
+    
     if (!contract) { 
+      console.error("Contract is NULL. Wallet not connected properly.");
       toast.error("Connect Wallet First"); 
       return false; 
     }
+
     const toastId = "reg-toast";
     setIsLoading(true);
     toast.loading("Processing...", { id: toastId });
     try {
-      console.log("Sending Transaction...");
+      console.log("Sending Transaction to Blockchain...");
       const tx = await contract.registerProduct(serial, name, manufacturer, imageHash);
-      console.log("Transaction sent:", tx.hash);
+      console.log("Transaction Hash:", tx.hash);
       
       await tx.wait();
-      console.log("Transaction mined");
+      console.log("Transaction Confirmed");
 
       await fetchStats(contract);
       toast.success("Registration Successful", { id: toastId });
       return true;
     } catch (error: any) {
-      console.error("Registration Error Details:", error);
+      console.error("Registration Error:", error);
       toast.error("Registration Failed", { id: toastId });
       return false;
     } finally { 
